@@ -24,31 +24,62 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install Android SDK
+        shell: bash
         run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+
+          SDKMANAGER="$(find "$ANDROID_SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | head -n 1)"
+
+          if [ -z "$SDKMANAGER" ]; then
+            SDKMANAGER="$(command -v sdkmanager || true)"
+          fi
+
+          if [ -z "$SDKMANAGER" ]; then
+            echo "sdkmanager not found"
+            exit 1
+          fi
+
+          echo "Using sdkmanager: $SDKMANAGER"
+
+          yes | "$SDKMANAGER" --licenses || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Extract project ZIP
+        shell: bash
         run: |
           ZIP_FILE="$(find . -maxdepth 1 -type f -iname '*DeutschA1*.zip' -print -quit)"
-          echo "ZIP_FILE=$ZIP_FILE"
-          test -n "$ZIP_FILE"
+
+          if [ -z "$ZIP_FILE" ]; then
+            echo "DeutschA1 ZIP not found"
+            exit 1
+          fi
+
           mkdir -p extracted
           unzip -q "$ZIP_FILE" -d extracted
 
-      - name: Fix Java 8 to Java 17
+          PROJECT_DIR="$(find extracted -name settings.gradle.kts -print -quit | xargs dirname)"
+
+          if [ -z "$PROJECT_DIR" ] || [ "$PROJECT_DIR" = "." ]; then
+            echo "Android project not found"
+            exit 1
+          fi
+
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Project: $PROJECT_DIR"
+
+      - name: Fix Java compatibility
+        shell: bash
         run: |
-          sed -i 's/VERSION_1_8/VERSION_17/g' extracted/DeutschA1/app/build.gradle.kts
+          find "$PROJECT_DIR" -type f -name "*.gradle.kts" -exec sed -i \
+            -e 's/JavaVersion.VERSION_1_8/JavaVersion.VERSION_17/g' \
+            -e 's/jvmTarget *= *["'\'']1\.8["'\'']/jvmTarget = "17"/g' {} \;
 
       - name: Build APK
-        run: gradle -p extracted/DeutschA1 :app:assembleDebug
+        run: gradle -p "$PROJECT_DIR" :app:assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: DeutschA1-debug-apk
-          path: extracted/DeutschA1/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
