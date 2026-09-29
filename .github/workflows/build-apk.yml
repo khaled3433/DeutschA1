@@ -11,7 +11,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -21,7 +20,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Gradle 8.9
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.9'
@@ -32,7 +31,6 @@ jobs:
           set -e
 
           export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
-
           echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
 
           SDKMANAGER="$(command -v sdkmanager || true)"
@@ -42,11 +40,9 @@ jobs:
           fi
 
           if [ -z "$SDKMANAGER" ]; then
-            echo "ERROR: Android SDK manager not found"
+            echo "Android SDK manager not found"
             exit 1
           fi
-
-          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
 
           yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
 
@@ -55,12 +51,13 @@ jobs:
             "platforms;android-35" \
             "build-tools;35.0.0"
 
-      - name: Create clean Android project
+      - name: Create Android project
         shell: bash
         run: |
           set -e
 
           rm -rf DeutschA1Build
+
           mkdir -p DeutschA1Build/app/src/main/java/com/example/deutscha1
           mkdir -p DeutschA1Build/app/src/main/res/values
 
@@ -165,7 +162,7 @@ jobs:
           </manifest>
           EOF
 
-      - name: Create Deutsch A1 application
+      - name: Create application
         shell: bash
         run: |
           set -e
@@ -180,20 +177,16 @@ jobs:
           import android.graphics.Color;
           import android.graphics.Typeface;
           import android.view.Gravity;
-          import android.view.View;
           import android.widget.Button;
           import android.widget.LinearLayout;
           import android.widget.ScrollView;
           import android.widget.SeekBar;
-          import android.widget.Spinner;
-          import android.widget.ArrayAdapter;
           import android.widget.Switch;
           import android.widget.TextView;
           import android.content.SharedPreferences;
 
           import java.util.ArrayList;
           import java.util.HashSet;
-          import java.util.LinkedHashMap;
           import java.util.List;
           import java.util.Locale;
           import java.util.Set;
@@ -209,12 +202,6 @@ jobs:
 
               private SharedPreferences prefs;
               private Set<String> favorites = new HashSet<>();
-
-              private TextView germanText;
-              private TextView arabicText;
-              private TextView categoryText;
-              private TextView intervalText;
-              private Switch repeatSwitch;
 
               private final List<Word> words = new ArrayList<>();
 
@@ -234,25 +221,34 @@ jobs:
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
 
-                  prefs = getSharedPreferences("deutsch_a1", MODE_PRIVATE);
+                  prefs = getSharedPreferences(
+                          "deutsch_a1",
+                          MODE_PRIVATE
+                  );
+
                   favorites = new HashSet<>(
-                          prefs.getStringSet("favorites", new HashSet<>())
+                          prefs.getStringSet(
+                                  "favorites",
+                                  new HashSet<>()
+                          )
                   );
 
                   createWords();
 
-                  tts = new TextToSpeech(this, status -> {
-                      if (status == TextToSpeech.SUCCESS) {
-                          tts.setLanguage(Locale.GERMAN);
-                          tts.setSpeechRate(0.85f);
-                      }
-                  });
+                  tts = new TextToSpeech(
+                          this,
+                          status -> {
+                              if (status == TextToSpeech.SUCCESS) {
+                                  tts.setLanguage(Locale.GERMAN);
+                                  tts.setSpeechRate(0.85f);
+                              }
+                          }
+                  );
 
                   buildInterface();
               }
 
               private void createWords() {
-
                   add("Hallo", "مرحبًا", "التحيات");
                   add("Guten Morgen", "صباح الخير", "التحيات");
                   add("Guten Tag", "نهارك سعيد", "التحيات");
@@ -359,17 +355,23 @@ jobs:
                   add("wie viel", "كم", "كلمات السؤال");
               }
 
-              private void add(String german, String arabic, String category) {
+              private void add(
+                      String german,
+                      String arabic,
+                      String category
+              ) {
                   for (Word w : words) {
                       if (w.german.equals(german)) {
                           return;
                       }
                   }
-                  words.add(new Word(german, arabic, category));
+
+                  words.add(
+                          new Word(german, arabic, category)
+                  );
               }
 
               private void buildInterface() {
-
                   LinearLayout root = new LinearLayout(this);
                   root.setOrientation(LinearLayout.VERTICAL);
                   root.setBackgroundColor(Color.WHITE);
@@ -377,102 +379,169 @@ jobs:
                   TextView title = new TextView(this);
                   title.setText("Deutsch A1 🇩🇪");
                   title.setTextSize(25);
-                  title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-                  title.setTextColor(Color.BLACK);
+                  title.setTypeface(
+                          Typeface.DEFAULT,
+                          Typeface.BOLD
+                  );
                   title.setGravity(Gravity.CENTER);
                   title.setPadding(10, 25, 10, 25);
 
                   root.addView(title);
 
                   LinearLayout nav = new LinearLayout(this);
-                  nav.setOrientation(LinearLayout.HORIZONTAL);
-                  nav.setGravity(Gravity.CENTER);
+                  nav.setOrientation(
+                          LinearLayout.HORIZONTAL
+                  );
 
-                  Button wordsButton = button("📚 الكلمات");
-                  Button favoritesButton = button("⭐ المراجعة");
-                  Button settingsButton = button("⚙️ الإعدادات");
+                  Button wordsButton =
+                          button("📚 الكلمات");
 
-                  nav.addView(wordsButton, weightParams());
-                  nav.addView(favoritesButton, weightParams());
-                  nav.addView(settingsButton, weightParams());
+                  Button favoritesButton =
+                          button("⭐ المراجعة");
+
+                  Button settingsButton =
+                          button("⚙️ الإعدادات");
+
+                  nav.addView(
+                          wordsButton,
+                          weightParams()
+                  );
+
+                  nav.addView(
+                          favoritesButton,
+                          weightParams()
+                  );
+
+                  nav.addView(
+                          settingsButton,
+                          weightParams()
+                  );
 
                   root.addView(nav);
 
-                  ScrollView scroll = new ScrollView(this);
-                  LinearLayout content = new LinearLayout(this);
-                  content.setOrientation(LinearLayout.VERTICAL);
-                  content.setPadding(15, 15, 15, 30);
+                  ScrollView scroll =
+                          new ScrollView(this);
+
+                  LinearLayout content =
+                          new LinearLayout(this);
+
+                  content.setOrientation(
+                          LinearLayout.VERTICAL
+                  );
+
+                  content.setPadding(
+                          15,
+                          15,
+                          15,
+                          30
+                  );
 
                   scroll.addView(content);
+
                   root.addView(
                           scroll,
                           new LinearLayout.LayoutParams(
-                                  -1, 0, 1
+                                  -1,
+                                  0,
+                                  1
                           )
                   );
 
-                  showWords(content, "");
+                  showWords(content);
 
-                  wordsButton.setOnClickListener(v -> showWords(content, ""));
-                  favoritesButton.setOnClickListener(v -> showFavorites(content));
-                  settingsButton.setOnClickListener(v -> showSettings(content));
+                  wordsButton.setOnClickListener(
+                          v -> showWords(content)
+                  );
+
+                  favoritesButton.setOnClickListener(
+                          v -> showFavorites(content)
+                  );
+
+                  settingsButton.setOnClickListener(
+                          v -> showSettings(content)
+                  );
 
                   setContentView(root);
               }
 
-              private void showWords(LinearLayout content, String category) {
-
+              private void showWords(
+                      LinearLayout content
+              ) {
                   content.removeAllViews();
 
-                  TextView heading = new TextView(this);
-                  heading.setText("كلمات Deutsch A1");
+                  TextView heading =
+                          new TextView(this);
+
+                  heading.setText(
+                          "كلمات Deutsch A1"
+                  );
+
                   heading.setTextSize(21);
-                  heading.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-                  heading.setPadding(5, 5, 5, 15);
+                  heading.setTypeface(
+                          Typeface.DEFAULT,
+                          Typeface.BOLD
+                  );
+
                   content.addView(heading);
 
                   for (int i = 0; i < words.size(); i++) {
-
-                      Word word = words.get(i);
-
-                      if (!category.isEmpty() &&
-                              !word.category.equals(category)) {
-                          continue;
-                      }
-
-                      addWordCard(content, word, i);
+                      addWordCard(
+                              content,
+                              words.get(i),
+                              i
+                      );
                   }
               }
 
-              private void showFavorites(LinearLayout content) {
-
+              private void showFavorites(
+                      LinearLayout content
+              ) {
                   content.removeAllViews();
 
-                  TextView heading = new TextView(this);
-                  heading.setText("⭐ الكلمات المحفوظة");
+                  TextView heading =
+                          new TextView(this);
+
+                  heading.setText(
+                          "⭐ الكلمات المحفوظة"
+                  );
+
                   heading.setTextSize(21);
-                  heading.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-                  heading.setPadding(5, 5, 5, 15);
+
                   content.addView(heading);
 
                   boolean found = false;
 
                   for (int i = 0; i < words.size(); i++) {
-
                       Word word = words.get(i);
 
                       if (favorites.contains(word.german)) {
                           found = true;
-                          addWordCard(content, word, i);
+
+                          addWordCard(
+                                  content,
+                                  word,
+                                  i
+                          );
                       }
                   }
 
                   if (!found) {
-                      TextView empty = new TextView(this);
-                      empty.setText("ما في كلمات محفوظة حاليًا ⭐");
+                      TextView empty =
+                              new TextView(this);
+
+                      empty.setText(
+                              "ما في كلمات محفوظة حاليًا ⭐"
+                      );
+
                       empty.setTextSize(18);
                       empty.setGravity(Gravity.CENTER);
-                      empty.setPadding(10, 50, 10, 50);
+                      empty.setPadding(
+                              10,
+                              50,
+                              10,
+                              50
+                      );
+
                       content.addView(empty);
                   }
               }
@@ -482,35 +551,69 @@ jobs:
                       Word word,
                       int index
               ) {
+                  LinearLayout card =
+                          new LinearLayout(this);
 
-                  LinearLayout card = new LinearLayout(this);
-                  card.setOrientation(LinearLayout.VERTICAL);
-                  card.setPadding(20, 18, 20, 18);
+                  card.setOrientation(
+                          LinearLayout.VERTICAL
+                  );
 
-                  TextView german = new TextView(this);
+                  card.setPadding(
+                          20,
+                          18,
+                          20,
+                          18
+                  );
+
+                  TextView german =
+                          new TextView(this);
+
                   german.setText(word.german);
                   german.setTextSize(23);
-                  german.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+                  german.setTypeface(
+                          Typeface.DEFAULT,
+                          Typeface.BOLD
+                  );
 
-                  TextView arabic = new TextView(this);
+                  TextView arabic =
+                          new TextView(this);
+
                   arabic.setText(word.arabic);
                   arabic.setTextSize(18);
 
-                  TextView category = new TextView(this);
-                  category.setText(word.category);
-                  category.setTextSize(14);
+                  TextView category =
+                          new TextView(this);
 
-                  LinearLayout buttons = new LinearLayout(this);
-
-                  Button speak = button("🔊 نطق");
-                  Button favorite = button(
-                          favorites.contains(word.german)
-                                  ? "⭐ محفوظ"
-                                  : "☆ حفظ"
+                  category.setText(
+                          word.category
                   );
 
-                  buttons.addView(speak, weightParams());
-                  buttons.addView(favorite, weightParams());
+                  category.setTextSize(14);
+
+                  LinearLayout buttons =
+                          new LinearLayout(this);
+
+                  Button speak =
+                          button("🔊 نطق");
+
+                  Button favorite =
+                          button(
+                                  favorites.contains(
+                                          word.german
+                                  )
+                                  ? "⭐ محفوظ"
+                                  : "☆ حفظ"
+                          );
+
+                  buttons.addView(
+                          speak,
+                          weightParams()
+                  );
+
+                  buttons.addView(
+                          favorite,
+                          weightParams()
+                  );
 
                   card.addView(german);
                   card.addView(arabic);
@@ -525,34 +628,246 @@ jobs:
                   });
 
                   favorite.setOnClickListener(v -> {
-
-                      if (favorites.contains(word.german)) {
-                          favorites.remove(word.german);
+                      if (favorites.contains(
+                              word.german
+                      )) {
+                          favorites.remove(
+                                  word.german
+                          );
                       } else {
-                          favorites.add(word.german);
+                          favorites.add(
+                                  word.german
+                          );
                       }
 
                       prefs.edit()
-                              .putStringSet("favorites", favorites)
+                              .putStringSet(
+                                      "favorites",
+                                      favorites
+                              )
                               .apply();
 
                       favorite.setText(
-                              favorites.contains(word.german)
-                                      ? "⭐ محفوظ"
-                                      : "☆ حفظ"
+                              favorites.contains(
+                                      word.german
+                              )
+                              ? "⭐ محفوظ"
+                              : "☆ حفظ"
                       );
                   });
               }
 
-              private void showSettings(LinearLayout content) {
-
+              private void showSettings(
+                      LinearLayout content
+              ) {
                   content.removeAllViews();
 
-                  TextView title = new TextView(this);
-                  title.setText("⚙️ الإعدادات");
+                  TextView title =
+                          new TextView(this);
+
+                  title.setText(
+                          "⚙️ الإعدادات"
+                  );
+
                   title.setTextSize(22);
-                  title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+
+                  title.setTypeface(
+                          Typeface.DEFAULT,
+                          Typeface.BOLD
+                  );
+
                   content.addView(title);
 
-                  TextView repeatTitle = new TextView(this);
-                  repeatTitle.setText("النطق التلقائي");
+                  TextView repeatTitle =
+                          new TextView(this);
+
+                  repeatTitle.setText(
+                          "النطق التلقائي"
+                  );
+
+                  repeatTitle.setTextSize(18);
+
+                  content.addView(
+                          repeatTitle
+                  );
+
+                  Switch repeat =
+                          new Switch(this);
+
+                  repeat.setText(
+                          "تشغيل التكرار التلقائي"
+                  );
+
+                  repeat.setChecked(
+                          autoRepeat
+                  );
+
+                  content.addView(repeat);
+
+                  repeat.setOnCheckedChangeListener(
+                          (button, checked) -> {
+                              autoRepeat = checked;
+
+                              handler.removeCallbacksAndMessages(
+                                      null
+                              );
+
+                              if (autoRepeat) {
+                                  scheduleRepeat();
+                              }
+                          }
+                  );
+
+                  TextView interval =
+                          new TextView(this);
+
+                  interval.setText(
+                          "الفاصل: "
+                                  + intervalSeconds
+                                  + " ثواني"
+                  );
+
+                  interval.setTextSize(18);
+
+                  content.addView(interval);
+
+                  SeekBar seek =
+                          new SeekBar(this);
+
+                  seek.setMax(29);
+                  seek.setProgress(
+                          intervalSeconds - 1
+                  );
+
+                  content.addView(seek);
+
+                  seek.setOnSeekBarChangeListener(
+                          new SeekBar.OnSeekBarChangeListener() {
+
+                              @Override
+                              public void onProgressChanged(
+                                      SeekBar bar,
+                                      int value,
+                                      boolean fromUser
+                              ) {
+                                  intervalSeconds =
+                                          value + 1;
+
+                                  interval.setText(
+                                          "الفاصل: "
+                                                  + intervalSeconds
+                                                  + " ثواني"
+                                  );
+                              }
+
+                              @Override
+                              public void onStartTrackingTouch(
+                                      SeekBar bar
+                              ) {}
+
+                              @Override
+                              public void onStopTrackingTouch(
+                                      SeekBar bar
+                              ) {
+                                  if (autoRepeat) {
+                                      handler.removeCallbacksAndMessages(
+                                              null
+                                      );
+
+                                      scheduleRepeat();
+                                  }
+                              }
+                          }
+                  );
+              }
+
+              private void scheduleRepeat() {
+                  handler.postDelayed(
+                          () -> {
+                              if (!autoRepeat) {
+                                  return;
+                              }
+
+                              if (words.isEmpty()) {
+                                  return;
+                              }
+
+                              Word word =
+                                      words.get(
+                                              currentIndex
+                                      );
+
+                              speak(word.german);
+
+                              currentIndex++;
+
+                              if (currentIndex >= words.size()) {
+                                  currentIndex = 0;
+                              }
+
+                              scheduleRepeat();
+
+                          },
+                          intervalSeconds * 1000L
+                  );
+              }
+
+              private void speak(String text) {
+                  if (tts == null) {
+                      return;
+                  }
+
+                  tts.speak(
+                          text,
+                          TextToSpeech.QUEUE_FLUSH,
+                          null,
+                          "deutsch_" + System.currentTimeMillis()
+                  );
+              }
+
+              private Button button(String text) {
+                  Button b = new Button(this);
+                  b.setText(text);
+                  return b;
+              }
+
+              private LinearLayout.LayoutParams weightParams() {
+                  return new LinearLayout.LayoutParams(
+                          0,
+                          -2,
+                          1
+                  );
+              }
+
+              @Override
+              protected void onDestroy() {
+                  handler.removeCallbacksAndMessages(null);
+
+                  if (tts != null) {
+                      tts.stop();
+                      tts.shutdown();
+                  }
+
+                  super.onDestroy();
+              }
+          }
+          EOF
+
+      - name: Build APK
+        shell: bash
+        run: |
+          set -e
+
+          cd DeutschA1Build
+
+          gradle clean assembleDebug --no-daemon --stacktrace
+
+          test -f app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DeutschA1-APK
+          path: DeutschA1Build/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
