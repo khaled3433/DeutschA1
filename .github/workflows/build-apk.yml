@@ -1,4 +1,4 @@
-name: Build APK
+name: Deutsch A1 - Build APK
 
 on:
   workflow_dispatch:
@@ -31,9 +31,7 @@ jobs:
         run: |
           set -e
 
-          if [ -z "${ANDROID_HOME:-}" ]; then
-            export ANDROID_HOME="/usr/local/lib/android/sdk"
-          fi
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
 
           echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
 
@@ -44,7 +42,7 @@ jobs:
           fi
 
           if [ -z "$SDKMANAGER" ]; then
-            echo "ERROR: sdkmanager not found"
+            echo "ERROR: Android SDK manager not found"
             exit 1
           fi
 
@@ -57,149 +55,504 @@ jobs:
             "platforms;android-35" \
             "build-tools;35.0.0"
 
-      - name: Extract project
+      - name: Create clean Android project
         shell: bash
         run: |
           set -e
 
-          ZIP_FILE="$(find . -maxdepth 1 -type f -iname '*.zip' | head -n 1)"
+          rm -rf DeutschA1Build
+          mkdir -p DeutschA1Build/app/src/main/java/com/example/deutscha1
+          mkdir -p DeutschA1Build/app/src/main/res/values
 
-          if [ -z "$ZIP_FILE" ]; then
-            echo "ERROR: Project ZIP not found"
-            exit 1
-          fi
+          cat > DeutschA1Build/settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
 
-          echo "Using: $ZIP_FILE"
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
 
-          rm -rf extracted
-          mkdir -p extracted
+          rootProject.name = "DeutschA1"
+          include(":app")
+          EOF
 
-          unzip -q "$ZIP_FILE" -d extracted
-
-          PROJECT_DIR="$(find "$GITHUB_WORKSPACE/extracted" \
-            -type f \
-            -name "settings.gradle.kts" \
-            -printf '%h\n' | head -n 1)"
-
-          if [ -z "$PROJECT_DIR" ]; then
-            echo "ERROR: Android project not found"
-            exit 1
-          fi
-
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-
-          echo "Project directory:"
-          echo "$PROJECT_DIR"
-
-      - name: Replace Gradle files
-        shell: bash
-        run: |
-          set -e
-
-          cat > "$PROJECT_DIR/build.gradle.kts" <<'EOF'
+          cat > DeutschA1Build/build.gradle <<'EOF'
           plugins {
-              id("com.android.application") version "8.7.3" apply false
-              id("org.jetbrains.kotlin.android") version "1.9.25" apply false
+              id 'com.android.application' version '8.7.3' apply false
           }
           EOF
 
-          cat > "$PROJECT_DIR/gradle.properties" <<'EOF'
+          cat > DeutschA1Build/gradle.properties <<'EOF'
           org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
           android.useAndroidX=true
-          kotlin.code.style=official
           EOF
 
-          cat > "$PROJECT_DIR/app/build.gradle.kts" <<'EOF'
+          cat > DeutschA1Build/app/build.gradle <<'EOF'
           plugins {
-              id("com.android.application")
-              id("org.jetbrains.kotlin.android")
+              id 'com.android.application'
           }
 
           android {
-              namespace = "com.example.deutscha1"
-              compileSdk = 35
+              namespace 'com.example.deutscha1'
+              compileSdk 35
 
               defaultConfig {
-                  applicationId = "com.example.deutscha1"
-                  minSdk = 24
-                  targetSdk = 35
-                  versionCode = 1
-                  versionName = "1.0"
-              }
-
-              buildFeatures {
-                  compose = true
-              }
-
-              composeOptions {
-                  kotlinCompilerExtensionVersion = "1.5.15"
+                  applicationId 'com.example.deutscha1'
+                  minSdk 24
+                  targetSdk 35
+                  versionCode 1
+                  versionName '1.0'
               }
 
               compileOptions {
-                  sourceCompatibility = JavaVersion.VERSION_17
-                  targetCompatibility = JavaVersion.VERSION_17
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
               }
-
-              kotlinOptions {
-                  jvmTarget = "17"
-              }
-          }
-
-          dependencies {
-              implementation("androidx.core:core-ktx:1.15.0")
-              implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
-              implementation("androidx.activity:activity-compose:1.10.0")
-
-              implementation("androidx.compose.ui:ui:1.7.8")
-              implementation("androidx.compose.ui:ui-graphics:1.7.8")
-              implementation("androidx.compose.ui:ui-tooling-preview:1.7.8")
-              implementation("androidx.compose.material3:material3:1.3.1")
-
-              debugImplementation("androidx.compose.ui:ui-tooling:1.7.8")
           }
           EOF
 
-      - name: Verify Java
-        shell: bash
-        run: |
-          echo "===== JAVA ====="
-          java -version
+          cat > DeutschA1Build/app/src/main/res/values/strings.xml <<'EOF'
+          <resources>
+              <string name="app_name">Deutsch A1</string>
+          </resources>
+          EOF
 
-          echo "===== JAVA HOME ====="
-          echo "$JAVA_HOME"
+          cat > DeutschA1Build/app/src/main/res/values/styles.xml <<'EOF'
+          <resources>
+              <style name="AppTheme"
+                  parent="android:style/Theme.Material.Light.NoActionBar">
+                  <item name="android:fontFamily">sans</item>
+                  <item name="android:windowLightStatusBar">true</item>
+                  <item name="android:statusBarColor">#FFFFFF</item>
+                  <item name="android:navigationBarColor">#FFFFFF</item>
+              </style>
+          </resources>
+          EOF
 
-          echo "===== GRADLE ====="
-          gradle --version
+          cat > DeutschA1Build/app/src/main/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-      - name: Build APK
+              <application
+                  android:allowBackup="true"
+                  android:label="@string/app_name"
+                  android:supportsRtl="true"
+                  android:theme="@style/AppTheme">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:screenOrientation="portrait"
+                      android:exported="true">
+
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+
+                  </activity>
+
+              </application>
+
+          </manifest>
+          EOF
+
+      - name: Create Deutsch A1 application
         shell: bash
         run: |
           set -e
 
-          cd "$PROJECT_DIR"
+          cat > DeutschA1Build/app/src/main/java/com/example/deutscha1/MainActivity.java <<'EOF'
+          package com.example.deutscha1;
 
-          gradle clean assembleDebug \
-            --no-daemon \
-            --stacktrace
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.os.Handler;
+          import android.speech.tts.TextToSpeech;
+          import android.graphics.Color;
+          import android.graphics.Typeface;
+          import android.view.Gravity;
+          import android.view.View;
+          import android.widget.Button;
+          import android.widget.LinearLayout;
+          import android.widget.ScrollView;
+          import android.widget.SeekBar;
+          import android.widget.Spinner;
+          import android.widget.ArrayAdapter;
+          import android.widget.Switch;
+          import android.widget.TextView;
+          import android.content.SharedPreferences;
 
-      - name: Verify APK
-        shell: bash
-        run: |
-          set -e
+          import java.util.ArrayList;
+          import java.util.HashSet;
+          import java.util.LinkedHashMap;
+          import java.util.List;
+          import java.util.Locale;
+          import java.util.Set;
 
-          APK="$PROJECT_DIR/app/build/outputs/apk/debug/app-debug.apk"
+          public class MainActivity extends Activity {
 
-          if [ ! -f "$APK" ]; then
-            echo "ERROR: APK was not created"
-            exit 1
-          fi
+              private TextToSpeech tts;
+              private Handler handler = new Handler();
 
-          echo "APK CREATED SUCCESSFULLY"
-          ls -lh "$APK"
+              private int intervalSeconds = 5;
+              private boolean autoRepeat = false;
+              private int currentIndex = 0;
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: DeutschA1-APK
-          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+              private SharedPreferences prefs;
+              private Set<String> favorites = new HashSet<>();
+
+              private TextView germanText;
+              private TextView arabicText;
+              private TextView categoryText;
+              private TextView intervalText;
+              private Switch repeatSwitch;
+
+              private final List<Word> words = new ArrayList<>();
+
+              private static class Word {
+                  String german;
+                  String arabic;
+                  String category;
+
+                  Word(String german, String arabic, String category) {
+                      this.german = german;
+                      this.arabic = arabic;
+                      this.category = category;
+                  }
+              }
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+
+                  prefs = getSharedPreferences("deutsch_a1", MODE_PRIVATE);
+                  favorites = new HashSet<>(
+                          prefs.getStringSet("favorites", new HashSet<>())
+                  );
+
+                  createWords();
+
+                  tts = new TextToSpeech(this, status -> {
+                      if (status == TextToSpeech.SUCCESS) {
+                          tts.setLanguage(Locale.GERMAN);
+                          tts.setSpeechRate(0.85f);
+                      }
+                  });
+
+                  buildInterface();
+              }
+
+              private void createWords() {
+
+                  add("Hallo", "مرحبًا", "التحيات");
+                  add("Guten Morgen", "صباح الخير", "التحيات");
+                  add("Guten Tag", "نهارك سعيد", "التحيات");
+                  add("Guten Abend", "مساء الخير", "التحيات");
+                  add("Tschüss", "وداعًا", "التحيات");
+
+                  add("Bitte", "من فضلك / عفوًا", "العبارات");
+                  add("Danke", "شكرًا", "العبارات");
+                  add("Ja", "نعم", "العبارات");
+                  add("Nein", "لا", "العبارات");
+                  add("Entschuldigung", "عذرًا", "العبارات");
+
+                  add("Ich", "أنا", "الضمائر");
+                  add("Du", "أنت", "الضمائر");
+                  add("Er", "هو", "الضمائر");
+                  add("Sie", "هي / حضرتك / هم", "الضمائر");
+                  add("Wir", "نحن", "الضمائر");
+                  add("Ihr", "أنتم", "الضمائر");
+
+                  add("sein", "يكون", "الأفعال");
+                  add("haben", "يملك / لديه", "الأفعال");
+                  add("machen", "يفعل / يصنع", "الأفعال");
+                  add("gehen", "يذهب", "الأفعال");
+                  add("kommen", "يأتي", "الأفعال");
+                  add("wohnen", "يسكن", "الأفعال");
+                  add("lernen", "يتعلم", "الأفعال");
+                  add("sprechen", "يتحدث", "الأفعال");
+                  add("essen", "يأكل", "الأفعال");
+                  add("trinken", "يشرب", "الأفعال");
+
+                  add("das Haus", "البيت", "المنزل");
+                  add("die Wohnung", "الشقة", "المنزل");
+                  add("das Zimmer", "الغرفة", "المنزل");
+                  add("die Küche", "المطبخ", "المنزل");
+
+                  add("die Schule", "المدرسة", "الدراسة");
+                  add("der Lehrer", "المعلم", "الدراسة");
+                  add("die Lehrerin", "المعلمة", "الدراسة");
+                  add("das Buch", "الكتاب", "الدراسة");
+                  add("der Stift", "القلم", "الدراسة");
+
+                  add("die Arbeit", "العمل", "العمل");
+                  add("der Beruf", "المهنة", "العمل");
+
+                  add("der Freund", "الصديق", "الأشخاص");
+                  add("die Freundin", "الصديقة", "الأشخاص");
+                  add("die Familie", "العائلة", "الأشخاص");
+                  add("die Mutter", "الأم", "الأشخاص");
+                  add("der Vater", "الأب", "الأشخاص");
+                  add("das Kind", "الطفل", "الأشخاص");
+
+                  add("heute", "اليوم", "الوقت");
+                  add("morgen", "غدًا", "الوقت");
+                  add("gestern", "أمس", "الوقت");
+                  add("jetzt", "الآن", "الوقت");
+                  add("später", "لاحقًا", "الوقت");
+
+                  add("eins", "واحد", "الأرقام");
+                  add("zwei", "اثنان", "الأرقام");
+                  add("drei", "ثلاثة", "الأرقام");
+                  add("vier", "أربعة", "الأرقام");
+                  add("fünf", "خمسة", "الأرقام");
+                  add("sechs", "ستة", "الأرقام");
+                  add("sieben", "سبعة", "الأرقام");
+                  add("acht", "ثمانية", "الأرقام");
+                  add("neun", "تسعة", "الأرقام");
+                  add("zehn", "عشرة", "الأرقام");
+
+                  add("gut", "جيد", "الصفات");
+                  add("schlecht", "سيئ", "الصفات");
+                  add("groß", "كبير", "الصفات");
+                  add("klein", "صغير", "الصفات");
+                  add("neu", "جديد", "الصفات");
+                  add("alt", "قديم / كبير في السن", "الصفات");
+                  add("schnell", "سريع", "الصفات");
+                  add("langsam", "بطيء", "الصفات");
+                  add("warm", "دافئ", "الصفات");
+                  add("kalt", "بارد", "الصفات");
+
+                  add("Wasser", "ماء", "الطعام والشراب");
+                  add("Brot", "خبز", "الطعام والشراب");
+                  add("Milch", "حليب", "الطعام والشراب");
+                  add("Kaffee", "قهوة", "الطعام والشراب");
+                  add("Tee", "شاي", "الطعام والشراب");
+                  add("Apfel", "تفاحة", "الطعام والشراب");
+                  add("Banane", "موزة", "الطعام والشراب");
+
+                  add("Restaurant", "مطعم", "الأماكن");
+                  add("Supermarkt", "سوبرماركت", "الأماكن");
+                  add("Bahnhof", "محطة قطار", "الأماكن");
+                  add("Straße", "شارع", "الأماكن");
+                  add("Stadt", "مدينة", "الأماكن");
+
+                  add("links", "يسار", "الاتجاهات");
+                  add("rechts", "يمين", "الاتجاهات");
+                  add("geradeaus", "إلى الأمام", "الاتجاهات");
+
+                  add("wo", "أين", "كلمات السؤال");
+                  add("wer", "من", "كلمات السؤال");
+                  add("was", "ماذا", "كلمات السؤال");
+                  add("wann", "متى", "كلمات السؤال");
+                  add("warum", "لماذا", "كلمات السؤال");
+                  add("wie", "كيف", "كلمات السؤال");
+                  add("wie viel", "كم", "كلمات السؤال");
+              }
+
+              private void add(String german, String arabic, String category) {
+                  for (Word w : words) {
+                      if (w.german.equals(german)) {
+                          return;
+                      }
+                  }
+                  words.add(new Word(german, arabic, category));
+              }
+
+              private void buildInterface() {
+
+                  LinearLayout root = new LinearLayout(this);
+                  root.setOrientation(LinearLayout.VERTICAL);
+                  root.setBackgroundColor(Color.WHITE);
+
+                  TextView title = new TextView(this);
+                  title.setText("Deutsch A1 🇩🇪");
+                  title.setTextSize(25);
+                  title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+                  title.setTextColor(Color.BLACK);
+                  title.setGravity(Gravity.CENTER);
+                  title.setPadding(10, 25, 10, 25);
+
+                  root.addView(title);
+
+                  LinearLayout nav = new LinearLayout(this);
+                  nav.setOrientation(LinearLayout.HORIZONTAL);
+                  nav.setGravity(Gravity.CENTER);
+
+                  Button wordsButton = button("📚 الكلمات");
+                  Button favoritesButton = button("⭐ المراجعة");
+                  Button settingsButton = button("⚙️ الإعدادات");
+
+                  nav.addView(wordsButton, weightParams());
+                  nav.addView(favoritesButton, weightParams());
+                  nav.addView(settingsButton, weightParams());
+
+                  root.addView(nav);
+
+                  ScrollView scroll = new ScrollView(this);
+                  LinearLayout content = new LinearLayout(this);
+                  content.setOrientation(LinearLayout.VERTICAL);
+                  content.setPadding(15, 15, 15, 30);
+
+                  scroll.addView(content);
+                  root.addView(
+                          scroll,
+                          new LinearLayout.LayoutParams(
+                                  -1, 0, 1
+                          )
+                  );
+
+                  showWords(content, "");
+
+                  wordsButton.setOnClickListener(v -> showWords(content, ""));
+                  favoritesButton.setOnClickListener(v -> showFavorites(content));
+                  settingsButton.setOnClickListener(v -> showSettings(content));
+
+                  setContentView(root);
+              }
+
+              private void showWords(LinearLayout content, String category) {
+
+                  content.removeAllViews();
+
+                  TextView heading = new TextView(this);
+                  heading.setText("كلمات Deutsch A1");
+                  heading.setTextSize(21);
+                  heading.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+                  heading.setPadding(5, 5, 5, 15);
+                  content.addView(heading);
+
+                  for (int i = 0; i < words.size(); i++) {
+
+                      Word word = words.get(i);
+
+                      if (!category.isEmpty() &&
+                              !word.category.equals(category)) {
+                          continue;
+                      }
+
+                      addWordCard(content, word, i);
+                  }
+              }
+
+              private void showFavorites(LinearLayout content) {
+
+                  content.removeAllViews();
+
+                  TextView heading = new TextView(this);
+                  heading.setText("⭐ الكلمات المحفوظة");
+                  heading.setTextSize(21);
+                  heading.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+                  heading.setPadding(5, 5, 5, 15);
+                  content.addView(heading);
+
+                  boolean found = false;
+
+                  for (int i = 0; i < words.size(); i++) {
+
+                      Word word = words.get(i);
+
+                      if (favorites.contains(word.german)) {
+                          found = true;
+                          addWordCard(content, word, i);
+                      }
+                  }
+
+                  if (!found) {
+                      TextView empty = new TextView(this);
+                      empty.setText("ما في كلمات محفوظة حاليًا ⭐");
+                      empty.setTextSize(18);
+                      empty.setGravity(Gravity.CENTER);
+                      empty.setPadding(10, 50, 10, 50);
+                      content.addView(empty);
+                  }
+              }
+
+              private void addWordCard(
+                      LinearLayout content,
+                      Word word,
+                      int index
+              ) {
+
+                  LinearLayout card = new LinearLayout(this);
+                  card.setOrientation(LinearLayout.VERTICAL);
+                  card.setPadding(20, 18, 20, 18);
+
+                  TextView german = new TextView(this);
+                  german.setText(word.german);
+                  german.setTextSize(23);
+                  german.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+
+                  TextView arabic = new TextView(this);
+                  arabic.setText(word.arabic);
+                  arabic.setTextSize(18);
+
+                  TextView category = new TextView(this);
+                  category.setText(word.category);
+                  category.setTextSize(14);
+
+                  LinearLayout buttons = new LinearLayout(this);
+
+                  Button speak = button("🔊 نطق");
+                  Button favorite = button(
+                          favorites.contains(word.german)
+                                  ? "⭐ محفوظ"
+                                  : "☆ حفظ"
+                  );
+
+                  buttons.addView(speak, weightParams());
+                  buttons.addView(favorite, weightParams());
+
+                  card.addView(german);
+                  card.addView(arabic);
+                  card.addView(category);
+                  card.addView(buttons);
+
+                  content.addView(card);
+
+                  speak.setOnClickListener(v -> {
+                      currentIndex = index;
+                      speak(word.german);
+                  });
+
+                  favorite.setOnClickListener(v -> {
+
+                      if (favorites.contains(word.german)) {
+                          favorites.remove(word.german);
+                      } else {
+                          favorites.add(word.german);
+                      }
+
+                      prefs.edit()
+                              .putStringSet("favorites", favorites)
+                              .apply();
+
+                      favorite.setText(
+                              favorites.contains(word.german)
+                                      ? "⭐ محفوظ"
+                                      : "☆ حفظ"
+                      );
+                  });
+              }
+
+              private void showSettings(LinearLayout content) {
+
+                  content.removeAllViews();
+
+                  TextView title = new TextView(this);
+                  title.setText("⚙️ الإعدادات");
+                  title.setTextSize(22);
+                  title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+                  content.addView(title);
+
+                  TextView repeatTitle = new TextView(this);
+                  repeatTitle.setText("النطق التلقائي");
